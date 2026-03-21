@@ -1,6 +1,7 @@
 import mongoose, { Schema } from "mongoose";
 import bcrypt from "bcrypt";
-import jwt  from "jsonwebtoken";
+import jwt from "jsonwebtoken";
+import crypto from "crypto";
 
 const userSchema = new Schema(
   {
@@ -10,7 +11,7 @@ const userSchema = new Schema(
         localPath: String,
       },
       default: {
-        url: "https://placehold.co/200x200",
+        url: `https://placehold.co/200x200`,
         localPath: "",
       },
     },
@@ -29,7 +30,7 @@ const userSchema = new Schema(
       lowercase: true,
       trim: true,
     },
-    fullNmae: {
+    fullName: {
       type: String,
       trim: true,
     },
@@ -47,7 +48,7 @@ const userSchema = new Schema(
     forgotPasswordToken: {
       type: String,
     },
-    forgotPasswordExpired: {
+    forgotPasswordExpiry: {
       type: Date,
     },
     emailVerificationToken: {
@@ -62,10 +63,10 @@ const userSchema = new Schema(
   },
 );
 
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return ;
+
   this.password = await bcrypt.hash(this.password, 10);
-  next();
 });
 
 userSchema.methods.isPasswordCorrect = async function (password) {
@@ -80,9 +81,7 @@ userSchema.methods.generateAccessToken = function () {
       username: this.username,
     },
     process.env.ACCESS_TOKEN_SECRET,
-    {
-      expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
-    },
+    { expiresIn: process.env.ACCESS_TOKEN_EXPIRY },
   );
 };
 
@@ -96,15 +95,16 @@ userSchema.methods.generateRefreshToken = function () {
   );
 };
 
-userSchema.methods.generateTemporaryToken = function(){
-    const unHashedToken = crypto.randomBytes(20).toString("hex")
+userSchema.methods.generateTemporaryToken = function () {
+  const unHashedToken = crypto.randomBytes(20).toString("hex");
 
-    const hashedToken = crypto.createHash("sha256")
+  const hashedToken = crypto
+    .createHash("sha256")
     .update(unHashedToken)
-    .digest("hex")
+    .digest("hex");
 
-    const tokenExpiry = Date.now() +(20*60*1000) //20mins
-    return {unHashedToken,hashedToken,tokenExpiry}
+  const tokenExpiry = Date.now() + 20 * 60 * 1000; //20 mins
+  return { unHashedToken, hashedToken, tokenExpiry };
 };
 
 export const User = mongoose.model("User", userSchema);
